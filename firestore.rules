@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null; // Allow reading other users for public profiles
+    }
+    
+    // Food listings rules
+    match /foodListings/{listingId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && 
+        request.auth.uid == resource.data.donorId;
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.donorId;
+    }
+    
+    // Claims rules
+    match /claims/{claimId} {
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.donorId || 
+         request.auth.uid == resource.data.receiverId);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && 
+        (request.auth.uid == resource.data.donorId || 
+         request.auth.uid == resource.data.receiverId);
+    }
+    
+    // Feedback rules
+    match /feedback/{feedbackId} {
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null;
+    }
+    
+    // Admin-only collections
+    match /admin/{document=**} {
+      allow read, write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}
